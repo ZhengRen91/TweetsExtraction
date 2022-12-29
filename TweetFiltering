@@ -1,0 +1,75 @@
+import pandas as pd
+from pyproj import Proj, transform
+import numpy as np
+
+
+def filterbyloc():
+    reader = pd.read_csv(r'C:\zhgren\CityCenterDetection\twitter_2015_CUS_filtered\twitter_2015_CUS_filtered.txt',
+                         sep=',', chunksize=1000000, names=['r1', 'x', 'y', 'r2', 'r3'], low_memory=False,
+                         error_bad_lines=False)
+    chunkindex = 0
+    for chunk in reader:
+        chunk['x'] = chunk['x'].astype(float)
+        chunk['y'] = chunk['y'].astype(float)
+        # specify spatial filter condition
+        # chunk = chunk.query('x<-71.858009 & x>-77.858932 & y<42.437732 & y>38.244488') # NY extent
+        # chunk = chunk.query('x<-116.326633 & x>-119.45815 & y<34.540679 & y>33.334008')  # LA extent
+        # chunk = chunk.query('x<-86.898659 & x>-89.249843 & y<43.539442 & y>41.222781')  # CHI extent
+        chunk = chunk.query('x<-94.7222 & x>-96.1461 & y<30.5064 & y>29.2589')  # HOU extent
+        # chunk.to_csv(r'D:\worldtweets'+str(chunkindex)+'.csv', columns=['id','x','y'], index=False);
+
+        chunk.to_csv(r'C:\zhgren\CityCenterDetection\twitter_2015_CUS_filtered\twitter_2015_HO.txt', columns=['x', 'y'],
+                     index=False, mode='a', header=False);
+        chunkindex += 1
+        print(chunkindex)
+
+def trimdata():
+    coords = pd.read_csv(r'C:\zhgren\CityCenterDetection\twitter_2015_CUS_filtered\twitter_2015_NY.txt',
+                         sep=',', names=['x', 'y'], low_memory=False, error_bad_lines=False)
+    print(len(coords))
+    coords = coords.drop_duplicates(subset=['x', 'y'])
+    print(len(coords))
+    print(coords)
+    coords['x'] = coords['x'].astype(float).round(6)
+    coords['y'] = coords['y'].astype(float).round(6)
+
+    coords.to_csv(r'C:\zhgren\CityCenterDetection\twitter_2015_CUS_filtered\twitter_2015_NY_trim.txt', columns=['x','y'], index=False)
+
+def rounddata():
+    coords = pd.read_csv(r'C:\zhgren\CityCenterDetection\twitter_2015_CUS_filtered\twitter_2015_CH.txt',
+                         sep=',', names=['x', 'y'], low_memory=False, error_bad_lines=False)
+    print(len(coords))
+    print(coords)
+    coords['x'] = coords['x'].astype(float).round(4)
+    coords['y'] = coords['y'].astype(float).round(4)
+    coords = coords.drop_duplicates(subset=['x', 'y'])
+    print(len(coords))
+    print(coords)
+    coords.to_csv(r'C:\zhgren\CityCenterDetection\twitter_2015_CUS_filtered\twitter_2015_CH_round.txt',
+                  columns=['x', 'y'], index=False)
+
+def readxyfromtxt():
+    df = pd.read_csv(r'C:\zhgren\CityCenterDetection\twitter_2015_CUS_filtered\twitter_2015_CH_round.txt', sep=',', low_memory=False, error_bad_lines=False)
+    print(df)
+    xypair = df.to_numpy() # a new good substitution for as_matrix in the old version
+    print(xypair[:5])
+    return xypair
+
+def projconversion_us(xypair):
+    p1 = Proj(init='epsg:4326') #WGS84
+    p2 = Proj(init='epsg:5070') #NAD83 / Conus Albers
+    x,y = transform(p1, p2, xypair[:, 0], xypair[:, 1])
+    newxypair = np.matrix([x, y]).transpose() # transpose the xy ndarray to the original form of the xypair
+    return newxypair
+
+def proj2csv():
+    xypair = readxyfromtxt()
+    xypair_proj = projconversion_us(xypair)
+    print(xypair_proj)
+    xydf = pd.DataFrame(xypair_proj, columns=['x', 'y'])
+    xydf.to_csv(r'C:\zhgren\CityCenterDetection\twitter_2015_CUS_filtered\twitter_2015_CH_proj.txt', index=False)
+
+if __name__ == '__main__':
+    filterbyloc()
+    # rounddata()
+    # proj2csv()
